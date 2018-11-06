@@ -1,0 +1,80 @@
+
+Option Explicit
+
+' PCR Analysis Worksheet
+' Logan Manlove
+' 12/15/2015
+'
+' Creates a template for analysis of PCR data. From takes in the number of genes,
+' number of samples, and number of replicates.
+
+
+Sub PCR_Analysis()
+
+    Dim genes As Integer
+    Dim Samples As Integer
+    Dim Replicates As Integer
+    Dim samplesIter As Integer
+    Dim cellpos As Integer
+    Dim geneIter As Integer
+     
+    
+    
+    
+    genes = Cells(2, 3).Value
+    Samples = Cells(3, 3).Value
+    Replicates = Cells(4, 3).Value
+    Range("C2", "C4").Value = ""
+    Workbooks.Add
+
+    For geneIter = 1 To genes
+        cellpos = 2 + (geneIter - 1) * Samples * Replicates + (geneIter - 1) * 4
+        
+    ' Header
+        Range(Cells(cellpos, 1), Cells(cellpos, 4)).Borders(xlEdgeBottom).Weight = xlMedium
+        Cells(cellpos, 1).Interior.Color = 65535
+        Cells(cellpos, 1).Offset(, 2).Value = "Std Dev"
+        Cells(cellpos, 1).Offset(, 3).Value = "Average Ct"
+    
+        If geneIter > 1 Then
+            Cells(cellpos, 1).Offset(1, 6).Value = "=A" & cellpos
+            Cells(cellpos, 1).Offset(1, 7).Value = "=A2"
+            Cells(cellpos, 1).Offset(1, 8).Value = "Delta CT"
+            Cells(cellpos, 1).Offset(1, 9).Value = "Delta Delta CT"
+            Cells(cellpos, 1).Offset(1, 10).Value = "Fold Change"
+        End If
+            
+
+    ' Body
+        For samplesIter = 1 To Samples
+            Cells(cellpos, 1).Offset(2 + (samplesIter - 1) * Replicates, 0).Resize(Replicates, 4).Select
+            With Selection
+                .Borders(xlEdgeLeft).Weight = xlThin
+                .Borders(xlEdgeRight).Weight = xlThin
+                .Borders(xlEdgeTop).Weight = xlThin
+                .Borders(xlEdgeBottom).Weight = xlMedium
+                .Borders(xlInsideVertical).LineStyle = xlDash
+                .Borders(xlInsideHorizontal).LineStyle = xlDash
+            End With
+            With Cells(cellpos, 1).Offset(2 + (samplesIter - 1) * Replicates, 0).Interior
+                .ThemeColor = xlThemeColorDark1
+                .TintAndShade = -0.249977111117893
+            End With
+            Cells(cellpos, 1).Offset(2 + (samplesIter - 1) * Replicates + Replicates - 1, 2).FormulaR1C1 = "=STDEV(R[" & -Replicates + 1 & "]C[-1]:R[0]C[-1])"
+            Cells(cellpos, 1).Offset(2 + (samplesIter - 1) * Replicates + Replicates - 1, 3).FormulaR1C1 = "=Average(R[" & -Replicates + 1 & "]C[-2]:R[0]C[-2])"
+            
+            If geneIter > 1 Then
+                Cells(cellpos, 1).Offset(2 + (samplesIter - 1) * Replicates, 0).Value = "=A" & 4 + Replicates * (samplesIter - 1)
+                Cells(cellpos, 1).Offset(1 + samplesIter, 5).Value = "=A" & 4 + Replicates * (samplesIter - 1)
+                Cells(cellpos, 1).Offset(1 + samplesIter, 6).Value = "=D" & 3 + (geneIter - 1) * Samples * Replicates + (geneIter - 1) * 4 + Replicates * (samplesIter)
+                Cells(cellpos, 1).Offset(1 + samplesIter, 7).Value = "=D" & 3 + Replicates * (samplesIter)
+                Cells(cellpos, 1).Offset(1 + samplesIter, 8).Value = "=G" & 3 + (geneIter - 1) * Samples * Replicates + (geneIter - 1) * 4 + samplesIter & "- H" & 3 + (geneIter - 1) * Samples * Replicates + (geneIter - 1) * 4 + samplesIter
+                Cells(cellpos, 1).Offset(1 + samplesIter, 9).Value = "=I" & 3 + (geneIter - 1) * Samples * Replicates + (geneIter - 1) * 4 + samplesIter & "- $I$" & 4 + (geneIter - 1) * Samples * Replicates + (geneIter - 1) * 4
+                Cells(cellpos, 1).Offset(1 + samplesIter, 10).Value = "=2^-J" & 3 + (geneIter - 1) * Samples * Replicates + (geneIter - 1) * 4 + samplesIter
+            End If
+        Next samplesIter
+    Next geneIter
+End Sub
+
+
+

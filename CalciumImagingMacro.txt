@@ -1,0 +1,176 @@
+' CalciumImagingMacro
+' Logan Manlove
+' 6/27/2016
+'
+' Used to facilitate analysis of calcium imaging data. Allows user to enter a time that an agonist was added.
+' if no time is given an 'auto' analysis is done where a baseline is found by searching for a rapid change from the
+' average measurement.
+'
+'
+'
+' Requires time in column A and ROI measurements in subsequent columns (b - ...)
+' all data must be contiguous
+
+
+
+Sub CalciumImagingMacro()
+    'This version (v2) adds a time to peak for the autoanalysis
+    
+    'Timeselect = 100
+    Timeselect = InputBox("Input Treatment Time", , "Auto")
+    If Timeselect = "Auto" Or Timeselect = "" Then GoTo AutoAnalyze
+    If Timeselect <> "Auto" And Timeselect <> "" Then GoTo UserAnalyze
+    
+AutoAnalyze:
+    
+                'finds the number of rows and columns
+    TotalColumns = 1
+    TotalRows = 1
+    While Cells(1, TotalColumns) <> ""                      'number of columns (TotalColumns)
+        TotalColumns = TotalColumns + 1
+    Wend
+    While Cells(TotalRows, 1) <> ""                         'number of rows (TotalRows)
+        TotalRows = TotalRows + 1
+    Wend
+    TotalRows = TotalRows - 1                               'edit rows and columns to establish correct values
+    TotalColumns = TotalColumns - 1                         '(TotalColumns) and (TotalRows) used to find ends of data
+    
+    
+                'finds the first datapoint assuming time is in cell(1,1), While loop held by (StartRowLoop)
+    StartRowLoop = 0                                        'sets up condition for while loop
+    InitialRow = 0                                          'allows the first step of the while loop to start at the first cell
+    While StartRowLoop = 0                                  'steps through the rows of the second column looking for the first number
+    InitialRow = InitialRow + 1                             'progresses the search through the rows
+        If IsNumeric(Cells(InitialRow, 2)) Then             'Check whether the contents of a cell are numeric or not
+            StartRowLoop = 1                                'if they are; allows exit of while loop
+        End If                                              'leaves (InitialRow) as the starting row for the program
+    Wend
+    
+    
+                'Adds Data Labels at the end of the time column
+    Cells(TotalRows + 2, 1).Value = "Baseline"
+    Cells(TotalRows + 3, 1).Value = "Peak"
+    Cells(TotalRows + 4, 1).Value = "Amplitude"
+                    
+                    
+                 'Goes Column by column checking data and comparing each value's increase to that of the average
+    InitialColumn = 2                                       'Sets initial column to the one after time (InitialColumn)
+    CurrentColumn = InitialColumn                           'Starts the working column (CurrentColumn) at the initial value
+    For ColumnStep = InitialColumn To TotalColumns          'For loop that steps through the total number of columns (ColumnStep) is arbitrary and is only used to step off columns
+        CurrentRow = InitialRow                             'Allows Each column to restart the (CurrentRow) at the top with the (InitialRow)
+        For RowStep = InitialRow To TotalRows               'For loop that steps through the total number of rows (RowStep is arbitrary
+            Basechange = 0
+            If CurrentRow < 22 Then                         'Eventually each value is compared to a moving average of the last 20 values but initially it must be compared to all the values above it
+                Baseline = Application.WorksheetFunction.Average(Range(Cells(InitialRow, CurrentColumn), Cells(CurrentRow, CurrentColumn)))
+                Basechange = 1
+            End If
+            If CurrentRow > 21 Then
+                Baseline = Application.WorksheetFunction.Average(Range(Cells(CurrentRow - 21, CurrentColumn), Cells(CurrentRow - 1, CurrentColumn)))
+                Basechange = 2
+            End If
+            If IsNumeric(Cells(CurrentRow + 1, CurrentColumn)) Then             'Checks to see that the cell to be evaluated contains a number
+               If Cells(CurrentRow + 1, CurrentColumn) > 1.2 * Baseline Then    'Checks to see if value exceeds threshhold
+                    Cells(CurrentRow, CurrentColumn).Interior.ColorIndex = 3    'Marker to show where baseline ended
+                    Peak = WorksheetFunction.max(Range(Cells(InitialRow, CurrentColumn), Cells(TotalRows, CurrentColumn)))  'Calculates the peak of the set of data
+                    Amplitude = Peak - Baseline                                 'Calculates the amplitude of the set of data
+                    If Basechange = 1 Then
+                        Cells(TotalRows + 2, CurrentColumn).Value = "=average(" & Cells(InitialRow, CurrentColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(CurrentRow, CurrentColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+                    End If
+                    If Basechange = 2 Then
+                        Cells(TotalRows + 2, CurrentColumn).Value = "=average(" & Cells(CurrentRow - 21, CurrentColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(CurrentRow - 1, CurrentColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+                    End If
+                    Cells(TotalRows + 3, CurrentColumn).Value = "=max(" & Cells(InitialRow, CurrentColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows, CurrentColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+                    Cells(TotalRows + 4, CurrentColumn).Value = "=" & Cells(TotalRows + 3, CurrentColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & "-" & Cells(TotalRows + 2, CurrentColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+                    GoTo EscapeColumn                                           'Exits the for loop when the threshhold has been exceeded
+               End If
+            End If
+            CurrentRow = CurrentRow + 1                                         'Advances the rows
+        Next
+        Cells(CurrentRow, CurrentColumn).Value = "end"                          'Marks Columns that did not have a value that exceeded the threshhold
+EscapeColumn:
+        CurrentColumn = CurrentColumn + 1                                       'Advances the columns
+    Next
+    
+    DataCheck = 0
+    DataColumn = 2
+    NullData = 0
+    While DataCheck = 0
+        If Cells(TotalRows + 3, DataColumn).Value > 0 Then
+            DataCheck = 1
+        End If
+        DataColumn = DataColumn + 1
+        If DataColumn = TotalColumns + 1 Then
+            A = MsgBox("No Peaks Were Found")
+            GoTo EndofAnalysis
+        End If
+    Wend
+
+        
+            
+ 
+                'Averages the baseline, peak and amplitude for the set of data
+    Cells(TotalRows + 2, TotalColumns + 1) = "=average(" & Cells(TotalRows + 2, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 2, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+    Cells(TotalRows + 3, TotalColumns + 1) = "=average(" & Cells(TotalRows + 3, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 3, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+    Cells(TotalRows + 4, TotalColumns + 1) = "=average(" & Cells(TotalRows + 4, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 4, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+    Cells(TotalRows + 4, TotalColumns + 2) = "=stdev(" & Cells(TotalRows + 4, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 4, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")/sqrt(count(" & Cells(TotalRows + 4, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 4, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & "))"
+GoTo EndofAnalysis
+
+
+
+UserAnalyze:
+    StartRowLoop = 0                                        'sets up condition for while loop
+    InitialRow = 0                                          'allows the first step of the while loop to start at the first cell
+    While StartRowLoop = 0                                  'steps through the rows of the first column looking for the first number
+        InitialRow = InitialRow + 1                             'progresses the search through the rows
+        If IsNumeric(Cells(InitialRow, 1)) Then             'Check whether the contents of a cell are numeric or not
+            StartRowLoop = 1                                'if they are; allows exit of while loop
+        End If                                              'leaves (InitialRow) as the starting row for the program
+    Wend
+    TimeRow = InitialRow
+    While Cells(TimeRow, 1).Value < (Timeselect - 1)
+        TimeRow = TimeRow + 1
+    Wend
+    TotalRows = 1
+    While Cells(TotalRows, 1) <> ""                         'number of rows (TotalRows)
+        TotalRows = TotalRows + 1
+    Wend
+    TotalRows = TotalRows - 1                               'edit rows and columns to establish correct values
+    TotalColumns = 1
+    While Cells(1, TotalColumns) <> ""                      'number of columns (TotalColumns)
+        TotalColumns = TotalColumns + 1
+    Wend
+    TotalColumns = TotalColumns - 1
+    Cells(TimeRow, 1).Interior.ColorIndex = 4
+    For StepColumn = 2 To TotalColumns
+        ColorMax = 0
+        For ColorRow = 2 To TotalRows
+            If IsNumeric(Cells(ColorRow, StepColumn)) Then
+                ColorCurrent = Cells(ColorRow, StepColumn).Value
+                If ColorCurrent > ColorMax Then
+                    ColorMax = ColorCurrent
+                    ColorRowMax = ColorRow
+                End If
+            End If
+        Next
+        Cells(ColorRowMax, StepColumn).Interior.ColorIndex = 4
+        UserAverage = WorksheetFunction.Average(Range(Cells(InitialRow, StepColumn), Cells(TimeRow, StepColumn)))
+        UserMax = WorksheetFunction.max(Range(Cells(InitialRow, StepColumn), Cells(TotalRows, StepColumn)))
+        Cells(TotalRows + 2, StepColumn).Value = "=average(" & Cells(InitialRow, StepColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TimeRow, StepColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+        Cells(TotalRows + 3, StepColumn).Value = "=max(" & Cells(InitialRow, StepColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows, StepColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+        Cells(TotalRows + 4, StepColumn).Value = "=" & Cells(TotalRows + 3, StepColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False) & "-" & Cells(TotalRows + 2, StepColumn).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+        Cells(TotalRows + 5, StepColumn).Value = "=" & Cells(ColorRowMax, 1).Address(RowAbsolute:=False, ColumnAbsolute:=False) & "-" & Cells(TimeRow, 1).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+    Next
+    
+    Cells(TotalRows + 2, TotalColumns + 1) = "=average(" & Cells(TotalRows + 2, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 2, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+    Cells(TotalRows + 3, TotalColumns + 1) = "=average(" & Cells(TotalRows + 3, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 3, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+    Cells(TotalRows + 4, TotalColumns + 1) = "=average(" & Cells(TotalRows + 4, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 4, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+    Cells(TotalRows + 5, TotalColumns + 1) = "=average(" & Cells(TotalRows + 5, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 5, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+    Cells(TotalRows + 4, TotalColumns + 2) = "=stdev(" & Cells(TotalRows + 4, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 4, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")/sqrt(count(" & Cells(TotalRows + 4, 2).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(TotalRows + 4, TotalColumns).Address(RowAbsolute:=False, ColumnAbsolute:=False) & "))"
+    Cells(TotalRows + 2, 1).Value = "Baseline"
+    Cells(TotalRows + 3, 1).Value = "Peak"
+    Cells(TotalRows + 4, 1).Value = "Amplitude"
+    Cells(TotalRows + 5, 1).Value = "Time to peak"
+EndofAnalysis:
+End Sub
+
+

@@ -1,0 +1,202 @@
+' Flexevent analysis macro
+' Logan Manlove
+' 8/8/2013
+'
+' Used to sort and facilitate analysis of data collected by a flexevent instrument.
+
+
+Sub Flexevent()
+ActiveSheet.Name = "Raw Data"
+Worksheets.Add(After:=Sheets(Sheets.Count)).Name = "Data"
+Sheets("Raw Data").Activate
+
+'Asks for number of treatments (numtreatments)
+numtreatments = InputBox("Enter number of treatments", "Number of Treatments")
+
+
+'asks for treatment names (treatments(*array*))
+Dim treatments(100)
+For definetreatment = 1 To numtreatments
+    treatments(definetreatment - 1) = InputBox("Define Treatment " & definetreatment, "Treatments")
+Next
+
+
+'finds start of sheet (sheetstartx, sheetstarty)
+sheetstartx = 1
+sheetstarty = 0
+outstart = 0
+While outstart = 0
+    sheetstarty = sheetstarty + 1
+    If sheetstarty = 2000 Then
+        sheetstarty = 1
+        sheetstartx = sheetstartx + 1
+    End If
+    If sheetstartx = 2000 Then
+        x = MsgBox("no data")
+        outstart = 1
+    End If
+    If Cells(sheetstarty, sheetstartx).Value = "Event ID" Then
+            outstart = 1
+    End If
+Wend
+
+'Assigns data column (datastartx)
+datastartx = sheetstartx + 20
+
+'initial values
+outlength = 0
+dataplacex = 4
+dataplacey = 2
+sheetlengthy = sheetstarty + 2
+spacemaker = 0
+DataLabel = 1
+ICinput = 1
+
+'places data labels on the data sheet
+Range(Cells(sheetstarty, datastartx + 2), Cells(sheetstarty, datastartx + 5)).Copy
+Sheets("data").Activate
+ActiveSheet.Paste Destination:=Worksheets("data").Range(Cells(4, dataplacex), Cells(4, dataplacex + 3))
+Sheets("Raw Data").Activate
+
+Range(Cells(sheetstarty, datastartx + 9), Cells(sheetstarty, datastartx + 12)).Copy
+Sheets("data").Activate
+ActiveSheet.Paste Destination:=Worksheets("data").Range(Cells(4, dataplacex + 4), Cells(4, dataplacex + 7))
+Sheets("Raw Data").Activate
+
+Range(Cells(sheetstarty, datastartx - 2), Cells(sheetstarty, datastartx - 2)).Copy
+Sheets("data").Activate
+ActiveSheet.Paste Destination:=Worksheets("data").Range(Cells(4, dataplacex - 1), Cells(4, dataplacex - 1))
+Sheets("Raw Data").Activate
+
+'while loop to go through data until a double spaces is found in the Event ID column
+While outlength = 0
+'checks the alerts column for non-blank cells
+    If Cells(sheetlengthy, datastartx).Value <> "" Then
+'copys the numeric data following the non-blank cells to the data sheet
+        Range(Cells(sheetlengthy, datastartx + 2), Cells(sheetlengthy, datastartx + 5)).Copy
+        Sheets("data").Activate
+        ActiveSheet.Paste Destination:=Worksheets("data").Range(Cells(dataplacey, dataplacex), Cells(dataplacey, dataplacex + 3))
+        Sheets("Raw Data").Activate
+        
+        Range(Cells(sheetlengthy + 1, datastartx + 9), Cells(sheetlengthy + 1, datastartx + 12)).Copy
+        Sheets("data").Activate
+        ActiveSheet.Paste Destination:=Worksheets("data").Range(Cells(dataplacey, dataplacex + 4), Cells(dataplacey, dataplacex + 7))
+        Sheets("Raw Data").Activate
+'marks on the data sheet data that was excluded by the program
+        If Cells(sheetlengthy, datastartx + 1).Value = "Yes" Then
+                Sheets("data").Activate
+                Cells(dataplacey, dataplacex).Interior.ColorIndex = 3
+                Sheets("Raw Data").Activate
+        End If
+'copys the name of the mouse to the data sheet
+        If DataLabel = 1 Then
+            Cells(sheetlengthy, datastartx - 15).Copy
+            Sheets("data").Activate
+            ActiveSheet.Paste Destination:=Worksheets("data").Cells(dataplacey, dataplacex - 3)
+            Sheets("Raw Data").Activate
+            DataLabel = 0
+        End If
+'adds the IC values to the data sheet
+        If ICinput = 1 Then
+            Range(Cells(sheetlengthy - 3, datastartx - 2), Cells(sheetlengthy - 1, datastartx - 2)).Copy
+            Sheets("data").Activate
+            ActiveSheet.Paste Destination:=Worksheets("data").Range(Cells(dataplacey, dataplacex - 1), Cells(dataplacey + 2, dataplacex - 1))
+            Sheets("Raw Data").Activate
+            ICinput = 0
+        End If
+        dataplacey = dataplacey + 1
+        spacemaker = 0
+    End If
+'creates space between data sets based on spaces between the data
+    If Cells(sheetlengthy, datastartx).Value = "" Then
+        If Cells(sheetlengthy + 1, datastartx) = "" Then
+            If spacemaker = 0 Then
+                dataplacey = dataplacey + 3
+                spacemaker = 1
+                ICinput = 1
+            End If
+        End If
+    End If
+'checks the Event ID column for spaces
+    If Cells(sheetlengthy, sheetstartx).Value = "" Then
+'if one space is found a new data column is started on the data sheet and labels are placed
+        If Cells(sheetlengthy + 1, sheetstartx).Value <> "" Then
+            dataplacex = dataplacex + 12
+            dataplacey = 5
+            DataLabel = 1
+            
+            Range(Cells(sheetstarty, datastartx + 2), Cells(sheetstarty, datastartx + 5)).Copy
+            Sheets("data").Activate
+            ActiveSheet.Paste Destination:=Worksheets("data").Range(Cells(dataplacey - 1, dataplacex), Cells(dataplacey, dataplacex + 3))
+            Sheets("Raw Data").Activate
+            
+            Range(Cells(sheetstarty, datastartx + 9), Cells(sheetstarty, datastartx + 12)).Copy
+            Sheets("data").Activate
+            ActiveSheet.Paste Destination:=Worksheets("data").Range(Cells(dataplacey - 1, dataplacex + 4), Cells(dataplacey, dataplacex + 7))
+            Sheets("Raw Data").Activate
+            
+            Range(Cells(sheetstarty, datastartx - 2), Cells(sheetstarty, datastartx - 2)).Copy
+            Sheets("data").Activate
+            ActiveSheet.Paste Destination:=Worksheets("data").Range(Cells(dataplacey - 1, dataplacex - 1), Cells(dataplacey, dataplacex - 1))
+            Sheets("Raw Data").Activate
+            
+        End If
+'If two spaces are found the end of the sheet has been found and the while loop is exited
+        If Cells(sheetlengthy + 1, sheetstartx).Value = "" Then
+            outlength = 1
+            GoTo datadone
+        End If
+    End If
+    sheetlengthy = sheetlengthy + 1
+Wend
+datadone:
+'Post translation data analysis
+Sheets("data").Activate
+dataanalysis = 0
+analysisx = 4
+analysisy = 5
+analysiscount = 0
+writeaverage = 1
+trtmntnum = -1
+While dataanalysis = 0
+    If Cells(analysisy, analysisx).Value <> "" Then
+        analysiscount = analysiscount + 1
+        writeaverage = 1
+    End If
+    If Cells(analysisy, analysisx).Value = "" Then
+        If analysiscount = 3 Then
+            Cells(analysisy - 3, analysisx - 2).Value = "Baseline"
+        End If
+        If analysiscount = 12 Then
+            trtmntnum = trtmntnum + 1
+            Cells(analysisy - 12, analysisx - 2).Value = treatments(trtmntnum)
+        End If
+        If writeaverage = 1 Then
+            Cells(analysisy, analysisx - 2).Value = "Average"
+            For averagewrite = 1 To 9
+                Cells(analysisy, analysisx - 2 + averagewrite).Value = "=average(" & Cells(analysisy - 1, analysisx - 2 + averagewrite).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(analysisy - analysiscount, analysisx - 2 + averagewrite).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+            Next
+            writeaverage = 0
+            analysiscount = 0
+        End If
+        If Cells(analysisy + 3, analysisx).Value = "" Then
+            If Cells(4, analysisx + 12) = "" Then
+                dataanalysis = 1
+                GoTo analysisdone
+            End If
+            If Cells(4, analysisx + 12) <> "" Then
+                analysisy = 4
+                analysisx = analysisx + 12
+                trtmntnum = -1
+            End If
+        End If
+    End If
+    analysisy = analysisy + 1
+Wend
+analysisdone:
+
+
+
+
+End Sub
+

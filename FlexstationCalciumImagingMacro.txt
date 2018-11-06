@@ -1,0 +1,104 @@
+' Flexstation Ca Analysis Macro
+' Logan Manlove
+' 10/28/2013
+'
+' Used to sort and analyze calcium imaging data exported from a Flexstation instrument.
+
+Sub CaData()
+    Dim x As Integer
+    Dim leng As Integer
+    Dim i As Integer
+    
+    i = 1
+    While (Cells(i, 1).Value <> "Plate:") 'Delete header from sheet
+        Rows(i).Delete
+    Wend
+    
+    
+    Cells(3, 1).Value = "=count(B:B)" 'finds the length of the sheet
+    leng = Cells(3, 1).Value
+    leng = leng * 1.1
+    
+    For x = 1 To leng                   'Check rows for new sets of data
+        If Cells(x, 1) = "Plate:" Then  'delete all but the first label of each plate
+            If Cells(x + 2, 3) = "" Then
+                Rows(x + 1).Delete
+            End If
+            Rows(x).Delete
+        End If
+    Next
+    Columns("A:B").Delete
+    
+    i = 2
+                                         
+    Dim title As String                  'Delete Blank cells and remove all but first time column
+    While (Cells(1, i) <> "")
+        title = Cells(1, i).Value
+        If Left(Mid(title, Len(title)), 1) = "T" Then
+            Columns(i).Delete
+        Else
+            Columns(i).SpecialCells(xlCellTypeBlanks).Delete Shift:=xlUp
+            i = i + 1
+        End If
+    Wend
+    
+
+    dataSheet = ActiveSheet.Name
+        
+    For x = 1 To 12
+        i = 2
+        j = 2
+        Columns(1).Copy
+        Worksheets.Add(After:=Sheets(Sheets.Count)).Name = "Treatment " & x
+        ActiveSheet.Paste Destination:=Columns(1)
+        Worksheets(dataSheet).Activate
+        While (Cells(1, i) <> "")
+            title = Cells(1, i).Value
+            If Val(Left(Mid(title, 2), 3)) = x Then
+                Columns(i).Copy
+                Worksheets("Treatment " & x).Activate
+                ActiveSheet.Paste Destination:=Columns(j)
+                Worksheets(dataSheet).Activate
+                j = j + 1
+            End If
+            i = i + 1
+        Wend
+    Next
+    
+    Application.DisplayAlerts = False
+    Sheets(dataSheet).Delete
+    Application.DisplayAlerts = True
+    
+    timeSelect = InputBox("Input Treatment Time, or 'Cancel' to Skip", , 30)
+    If IsNumeric(timeSelect) Then
+        Worksheets("Treatment " & 1).Activate
+        totalRows = 2
+        timeRow = 2
+        While Cells(totalRows, 1).Value <> ""
+            If Cells(totalRows, 1).Value < Val(timeSelect) Then
+                timeRow = timeRow + 1
+                
+            End If
+            totalRows = totalRows + 1
+            
+        Wend
+        timeRow = timeRow - 1
+        totalRows = totalRows - 1
+        For ws = 1 To 12
+            Worksheets("Treatment " & ws).Activate
+            Cells(2, 11).Value = "Baseline"
+            Cells(3, 11).Value = "Peak"
+            Cells(4, 11).Value = "Amplitude"
+            For col = 2 To 9
+                Cells(2, col + 10).Value = "=average(" & Cells(2, col).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(timeRow, col).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+                Cells(3, col + 10).Value = "=max(" & Cells(timeRow + 1, col).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(totalRows, col).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+                Cells(4, col + 10).Value = "=" & Cells(3, col + 10).Address(RowAbsolute:=False, ColumnAbsolute:=False) & "-" & Cells(2, col + 10).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+            Next col
+            Cells(1, 21).Value = "Average"
+            Cells(2, 21).Value = "=average(" & Cells(2, 12).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(2, 19).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+            Cells(3, 21).Value = "=average(" & Cells(3, 12).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(3, 19).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+            Cells(4, 21).Value = "=average(" & Cells(4, 12).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ":" & Cells(4, 19).Address(RowAbsolute:=False, ColumnAbsolute:=False) & ")"
+        Next ws
+    End If
+    
+End Sub
